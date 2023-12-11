@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/jsonschema"
+	"github.com/gobeam/stringy"
 	"github.com/iancoleman/orderedmap"
 	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/protobuf/proto"
@@ -600,17 +601,17 @@ func (c *Converter) recursiveConvertMessageType(curPkg *ProtoPackage, msgDesc *d
 
 				// "Ignored" fields are simply skipped:
 				if fieldOptions.GetIgnore() {
-					c.logger.WithField("field_name", fieldDesc.GetName()).WithField("message_name", msgDesc.GetName()).Debug("Skipping ignored field")
+					c.logger.WithField("field_name", convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase)).WithField("message_name", msgDesc.GetName()).Debug("Skipping ignored field")
 					continue
 				}
 
 				// "Required" fields are added to the list of required attributes in our schema:
 				if fieldOptions.GetRequired() {
-					c.logger.WithField("field_name", fieldDesc.GetName()).WithField("message_name", msgDesc.GetName()).Debug("Marking required field")
+					c.logger.WithField("field_name", convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase)).WithField("message_name", msgDesc.GetName()).Debug("Marking required field")
 					if c.Flags.UseJSONFieldnamesOnly {
 						jsonSchemaType.Required = append(jsonSchemaType.Required, fieldDesc.GetJsonName())
 					} else {
-						jsonSchemaType.Required = append(jsonSchemaType.Required, fieldDesc.GetName())
+						jsonSchemaType.Required = append(jsonSchemaType.Required, convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase))
 					}
 				}
 			}
@@ -619,17 +620,17 @@ func (c *Converter) recursiveConvertMessageType(curPkg *ProtoPackage, msgDesc *d
 		// Convert the field into a JSONSchema type:
 		recursedJSONSchemaType, err := c.convertField(curPkg, fieldDesc, msgDesc, duplicatedMessages, messageFlags)
 		if err != nil {
-			c.logger.WithError(err).WithField("field_name", fieldDesc.GetName()).WithField("message_name", msgDesc.GetName()).Error("Failed to convert field")
+			c.logger.WithError(err).WithField("field_name", convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase)).WithField("message_name", msgDesc.GetName()).Error("Failed to convert field")
 			return nil, err
 		}
-		c.logger.WithField("field_name", fieldDesc.GetName()).WithField("type", recursedJSONSchemaType.Type).Trace("Converted field")
+		c.logger.WithField("field_name", convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase)).WithField("type", recursedJSONSchemaType.Type).Trace("Converted field")
 
 		// If this field is part of a OneOf declaration then build that here:
 		if c.Flags.EnforceOneOf && fieldDesc.OneofIndex != nil {
 			if c.Flags.UseJSONFieldnamesOnly {
 				jsonSchemaType.OneOf = append(jsonSchemaType.OneOf, &jsonschema.Type{Required: []string{fieldDesc.GetJsonName()}})
 			} else {
-				jsonSchemaType.OneOf = append(jsonSchemaType.OneOf, &jsonschema.Type{Required: []string{fieldDesc.GetName()}})
+				jsonSchemaType.OneOf = append(jsonSchemaType.OneOf, &jsonschema.Type{Required: []string{convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase)}})
 			}
 
 		}
@@ -639,10 +640,10 @@ func (c *Converter) recursiveConvertMessageType(curPkg *ProtoPackage, msgDesc *d
 		case c.Flags.UseJSONFieldnamesOnly:
 			jsonSchemaType.Properties.Set(fieldDesc.GetJsonName(), recursedJSONSchemaType)
 		case c.Flags.UseProtoAndJSONFieldNames:
-			jsonSchemaType.Properties.Set(fieldDesc.GetName(), recursedJSONSchemaType)
+			jsonSchemaType.Properties.Set(convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase), recursedJSONSchemaType)
 			jsonSchemaType.Properties.Set(fieldDesc.GetJsonName(), recursedJSONSchemaType)
 		default:
-			jsonSchemaType.Properties.Set(fieldDesc.GetName(), recursedJSONSchemaType)
+			jsonSchemaType.Properties.Set(convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase), recursedJSONSchemaType)
 		}
 
 		// Enforce all_fields_required:
@@ -657,7 +658,7 @@ func (c *Converter) recursiveConvertMessageType(curPkg *ProtoPackage, msgDesc *d
 			if c.Flags.UseJSONFieldnamesOnly {
 				jsonSchemaType.Required = append(jsonSchemaType.Required, fieldDesc.GetJsonName())
 			} else {
-				jsonSchemaType.Required = append(jsonSchemaType.Required, fieldDesc.GetName())
+				jsonSchemaType.Required = append(jsonSchemaType.Required, convertFieldNameCase(fieldDesc.GetName(), c.fieldNameTargetCase))
 			}
 		}
 	}
@@ -684,4 +685,14 @@ func dedupe(inputStrings []string) []string {
 		}
 	}
 	return outputStrings
+}
+
+func convertFieldNameCase(name string, targetCase string) string {
+	switch targetCase {
+	case "snake":
+		return stringy.New(name).SnakeCase().ToLower()
+	case "pascal":
+		return stringy.New(name).CamelCase()
+	}
+	panic("invalid field name case")
 }

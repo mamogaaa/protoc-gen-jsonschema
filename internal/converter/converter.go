@@ -43,6 +43,7 @@ type Converter struct {
 	schemaVersion       string
 	sourceInfo          *sourceCodeInfo
 	messageTargets      []string
+	fieldNameTargetCase string
 }
 
 // ConverterFlags control the behaviour of the converter:
@@ -133,6 +134,11 @@ func (c *Converter) parseGeneratorParameters(parameters string) {
 		// Configure custom file extension:
 		if parameterParts := strings.Split(parameter, "file_extension="); len(parameterParts) == 2 {
 			c.schemaFileExtension = parameterParts[1]
+		}
+
+		// Configure custom file extension:
+		if parameterParts := strings.Split(parameter, "field_name_target_case="); len(parameterParts) == 2 {
+			c.fieldNameTargetCase = parameterParts[1]
 		}
 	}
 }

@@ -95,6 +95,7 @@ protoc \
 |`json_fieldnames`| Use JSON field names only |
 |`prefix_schema_files_with_package`| Prefix the output filename with package |
 |`proto_and_json_fieldnames`| Use proto and JSON field names |
+|`field_name_target_case`| Convert field names to specific case (`snake` or `pascal`) |
 
 
 Custom Proto Options
