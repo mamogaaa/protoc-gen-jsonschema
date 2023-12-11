@@ -691,8 +691,6 @@ func convertFieldNameCase(name string, targetCase string) string {
 	switch targetCase {
 	case "snake":
 		return stringy.New(name).SnakeCase().ToLower()
-	case "pascal":
-		return stringy.New(name).CamelCase()
 	}
-	panic("invalid field name case")
+	return name
 }
